@@ -1,0 +1,132 @@
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Pencil } from "lucide-react";
+import { type Borrower, getBorrowers, saveBorrowers } from "@/lib/storage";
+
+interface Props {
+  borrower: Borrower;
+  onUpdated: () => void;
+}
+
+export function EditBorrowerDialog({ borrower, onUpdated }: Props) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(borrower.name);
+  const [phone, setPhone] = useState(borrower.phone || "");
+  const [interestRate, setInterestRate] = useState(String(borrower.interestRate));
+  const [loanAmount, setLoanAmount] = useState(String(borrower.loanAmount));
+  const [loanDate, setLoanDate] = useState(borrower.loanDate);
+
+  // Sync state if the borrower prop changes while the dialog is closed
+  useEffect(() => {
+    if (!open) {
+      setName(borrower.name);
+      setPhone(borrower.phone || "");
+      setInterestRate(String(borrower.interestRate));
+      setLoanAmount(String(borrower.loanAmount));
+      setLoanDate(borrower.loanDate);
+    }
+  }, [borrower, open]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const amount = Number(loanAmount);
+    const rate = Number(interestRate);
+
+    // Basic Validation
+    if (!name || isNaN(amount) || isNaN(rate)) return;
+
+    const all = getBorrowers();
+    const idx = all.findIndex(b => b.id === borrower.id);
+    
+    if (idx === -1) return;
+
+    all[idx] = {
+      ...all[idx],
+      name,
+      phone: phone.trim() || undefined,
+      interestRate: rate,
+      loanAmount: amount,
+      loanDate,
+    };
+
+    saveBorrowers(all);
+    setOpen(false);
+    onUpdated();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="gap-1">
+          <Pencil className="h-3.5 w-3.5" />
+          திருத்து
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-[340px] rounded-lg">
+        <DialogHeader>
+          <DialogTitle>கடன் தகவல் திருத்த</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">பெயர் *</Label>
+            <Input 
+              id="name"
+              value={name} 
+              onChange={e => setName(e.target.value)} 
+              required 
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="phone">தொலைபேசி எண்</Label>
+            <Input 
+              id="phone"
+              type="tel"
+              value={phone} 
+              onChange={e => setPhone(e.target.value)} 
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="amount">கடன் தொகை (₹) *</Label>
+            <Input 
+              id="amount"
+              type="number" 
+              value={loanAmount} 
+              onChange={e => setLoanAmount(e.target.value)} 
+              required 
+              min="0"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="rate">வட்டி சதவீதம் (மாதம் %) *</Label>
+            <Input 
+              id="rate"
+              type="number" 
+              step="0.1" 
+              value={interestRate} 
+              onChange={e => setInterestRate(e.target.value)} 
+              required 
+              min="0"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="date">கடன் தேதி *</Label>
+            <Input 
+              id="date"
+              type="date" 
+              value={loanDate} 
+              onChange={e => setLoanDate(e.target.value)} 
+              required 
+            />
+          </div>
+          <Button type="submit" className="w-full gradient-primary">
+            சேமிக்க
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
